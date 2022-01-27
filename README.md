@@ -21,8 +21,9 @@ name of the service and an appId.
 
 ```javascript
 import NetlifyGraphAuth from 'netlify-graph-auth';
+import process from 'process';
 
-const APP_ID = YOUR_APP_ID;
+const APP_ID = process.env.SITE_ID;
 
 const auth = new NetlifyGraphAuth({
   appId: APP_ID,
