@@ -14,7 +14,7 @@ npm install netlify-graph-auth
 
 ## Create an Auth Client
 
-For our example, we'll log in to Stripe.
+For our example, we'll log in to GitHub.
 
 First, we'll construct a new NetlifyGraphAuth instance with our siteId.
 
