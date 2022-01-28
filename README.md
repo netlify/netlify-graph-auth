@@ -79,11 +79,11 @@ log the client out and return a promise wrapping an object with a
 whether the user is still logged in.
 
 ```javascript
-  const response = await auth.logout('github');
+const response = await auth.logout('github');
 
-  if (response.result === 'success') {
-    console.log('Logout succeeded');
-  } else {
-    console.log('Logout failed');
-  }
+if (response.result === 'success') {
+  console.log('Logout succeeded');
+} else {
+  console.log('Logout failed');
+}
 ```
