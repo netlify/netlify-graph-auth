@@ -16,17 +16,14 @@ npm install netlify-graph-auth
 
 For our example, we'll log in to Stripe.
 
-First, we'll construct a new NetlifyGraphAuth instance. It requires the
-name of the service and an appId.
+First, we'll construct a new NetlifyGraphAuth instance with our siteId.
 
 ```javascript
 import NetlifyGraphAuth from 'netlify-graph-auth';
 import process from 'process';
 
-const APP_ID = process.env.SITE_ID;
-
 const auth = new NetlifyGraphAuth({
-  appId: APP_ID,
+  siteId: process.env.SITE_ID,
 });
 ```
 
@@ -39,13 +36,12 @@ will return a promise with a boolean indicating if the user is logged
 in to that service.
 
 ```javascript
-auth.isLoggedIn('github').then(isLoggedIn => {
-  if (isLoggedIn) {
-    console.log('Already logged in to GitHub');
-  } else {
-    console.log('Not logged in to GitHub.');
-  }
-});
+const isLoggedIn = await auth.isLoggedIn('github');
+if (isLoggedIn) {
+  console.log('Already logged in to GitHub');
+} else {
+  console.log('Not logged in to GitHub.');
+}
 ```
 
 ## Log the user in
@@ -58,18 +54,21 @@ After the client finishes, you can call `isLoggedIn` again to check if the
 user successfully made it through the flow.
 
 ```javascript
-auth
-  .login('github')
-  .then(() => {
-    auth.isLoggedIn('github').then(isLoggedIn => {
-      if (isLoggedIn) {
-        console.log('Successfully logged in to GitHub');
-      } else {
-        console.log('Did not grant auth for GitHub');
-      }
-    });
-  })
-  .catch(e => console.error('Problem logging in', e));
+try {
+  // Prompt the user to log into GitHub
+  await auth.login('github');
+
+  // Check to see if they logged in successfully
+  const isLoggedIn = await auth.isLoggedIn('github');
+
+  if (isLoggedIn) {
+    console.log('Successfully logged in to GitHub');
+  } else {
+    console.log('Did not grant auth for GitHub');
+  }
+} catch (error) {
+  console.error('Problem logging in', error);
+}
 ```
 
 ## Log the user out
@@ -80,11 +79,11 @@ log the client out and return a promise wrapping an object with a
 whether the user is still logged in.
 
 ```javascript
-auth.logout('github').then(response => {
+  const response = await auth.logout('github');
+
   if (response.result === 'success') {
     console.log('Logout succeeded');
   } else {
     console.log('Logout failed');
   }
-});
 ```

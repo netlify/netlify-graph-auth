@@ -54,7 +54,7 @@ type CommunicationMode = 'post_message' | 'redirect';
 
 export type Opts = {
   graphOrigin?: string;
-  appId: string;
+  siteId: string;
   oauthFinishOrigin?: string;
   oauthFinishPath?: string;
   saveAuthToStorage?: boolean;
@@ -416,7 +416,7 @@ async function fetchQuery(
 
 async function exchangeCode(
   graphOrigin: string,
-  appId: string,
+  siteId: string,
   redirectOrigin: string,
   redirectPath: string,
   code: string,
@@ -428,7 +428,7 @@ async function exchangeCode(
     origin: graphOrigin,
     path: '/oauth/code',
     query: {
-      app_id: appId,
+      app_id: siteId,
       redirect_uri: redirectUri,
       code,
       code_verifier: verifier,
@@ -467,14 +467,14 @@ type ExchangeRefreshTokenResponse =
 
 async function exchangeRefreshToken(
   graphOrigin: string,
-  appId: string,
+  siteId: string,
   refreshToken: string,
 ): Promise<ExchangeRefreshTokenResponse> {
   const url = URI.make({
     origin: graphOrigin,
     path: '/oauth/token',
     query: {
-      app_id: appId,
+      app_id: siteId,
     },
   });
   const headers = {
@@ -507,8 +507,8 @@ function isExpired(token: Token): boolean {
   return token.expireDate < Date.now();
 }
 
-function tokenFromStorage(storage: Storage, appId: string): Token | null {
-  const v = storage.getItem(appId);
+function tokenFromStorage(storage: Storage, siteId: string): Token | null {
+  const v = storage.getItem(siteId);
   if (v) {
     const possibleToken = JSON.parse(v);
     if (
@@ -541,16 +541,16 @@ class NetlifyGraphAuth {
   _redirectPath: string;
   _accessToken: Token | null = null;
   graphOrigin: string;
-  appId: string;
+  siteId: string;
   _storageKey: string;
   _storage: Storage;
   _communicationMode: CommunicationMode;
   supportedServices: Array<string> = ALL_SERVICES;
 
   constructor(opts: Opts) {
-    const {appId, oauthFinishOrigin, oauthFinishPath} = opts;
+    const {siteId, oauthFinishOrigin, oauthFinishPath} = opts;
     this.graphOrigin = opts.graphOrigin || DEFAULT_GRAPH_ORIGIN;
-    this.appId = appId;
+    this.siteId = siteId;
     const windowUri = URI.parse(window.location.toString());
     this._redirectOrigin = normalizeRedirectOrigin(
       oauthFinishOrigin || windowUri.origin,
@@ -564,14 +564,14 @@ class NetlifyGraphAuth {
 
     const fetchUrl = URI.make({
       origin: opts.graphOrigin || DEFAULT_GRAPH_ORIGIN,
-      path: '/dynamic',
-      query: {app_id: appId},
+      path: '/graphql',
+      query: {app_id: siteId},
     });
     this._fetchUrl = opts.graphqlUrl || URI.toString(fetchUrl);
     this._storage =
       opts.storage ||
       (hasLocalStorage() ? new LocalStorage() : new InMemoryStorage());
-    this._storageKey = this.appId;
+    this._storageKey = this.siteId;
     this._accessToken = tokenFromStorage(this._storage, this._storageKey);
     this._communicationMode = opts.communicationMode || 'post_message';
   }
@@ -636,7 +636,7 @@ class NetlifyGraphAuth {
   ): Promise<Token | null> => {
     const baseResponse = await exchangeRefreshToken(
       this.graphOrigin,
-      this.appId,
+      this.siteId,
       refreshToken,
     );
     if (!baseResponse) {
@@ -697,7 +697,7 @@ class NetlifyGraphAuth {
     const challenge = await PKCE.codeChallengeOfVerifier(verifier);
     const query: any = {
       service,
-      app_id: this.appId,
+      app_id: this.siteId,
       response_type: 'code',
       redirect_origin: this._redirectOrigin,
       redirect_path: this._redirectPath,
@@ -759,7 +759,7 @@ class NetlifyGraphAuth {
             } else {
               exchangeCode(
                 this.graphOrigin,
-                this.appId,
+                this.siteId,
                 this._redirectOrigin,
                 this._redirectPath,
                 code,
@@ -841,7 +841,7 @@ class NetlifyGraphAuth {
               } else {
                 exchangeCode(
                   this.graphOrigin,
-                  this.appId,
+                  this.siteId,
                   this._redirectOrigin,
                   this._redirectPath,
                   code,
