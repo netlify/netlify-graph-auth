@@ -1,6 +1,6 @@
 {
   "name": "netlify-graph-auth",
-  "version": "0.0.1-beta.3",
+  "version": "0.0.1-beta.4",
   "description": "Client-side authentication for Netlify GraphQL APIs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,9 +19,7 @@
     "Sean Grove <sean.s.grove@netlify.com> (https://twitter.com/sgrove)"
   ],
   "license": "MIT",
-  "dependencies": {
-    "uuid": "^8.3.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^17.0.8",
     "prettier": "^2.5.1",
