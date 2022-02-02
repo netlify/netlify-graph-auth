@@ -1,14 +1,5 @@
-import NetlifyGraphAuth from './auth';
-import OAuthError from './oauthError';
-import {InMemoryStorage, LocalStorage} from './storage';
-import {findMissingAuthServices} from './helpers';
-
-export {
-  NetlifyGraphAuth,
-  InMemoryStorage,
-  LocalStorage,
-  findMissingAuthServices,
-  OAuthError,
-};
-
-export default NetlifyGraphAuth;
+export * as default from './auth';
+export * as NetlifyGraphAuth from './auth';
+export * as OAuthError from './oauthError';
+export {InMemoryStorage, LocalStorage} from './storage';
+export {findMissingAuthServices} from './helpers';
