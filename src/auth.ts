@@ -8,7 +8,7 @@ import type {Storage} from './storage';
 
 type Timer = ReturnType<typeof setTimeout>;
 
-export type Service =
+export type NetlifyGraphAuthService =
   | 'adroll'
   | 'asana'
   | 'box'
@@ -96,7 +96,7 @@ export type ServiceInfo = {
 export type ServicesList = Array<ServiceInfo>;
 
 export type ServicesStatus = {
-  [key in Service]?: ServiceStatus;
+  [key in NetlifyGraphAuthService]?: ServiceStatus;
 };
 
 export type AuthResponse = {
@@ -154,7 +154,7 @@ const ALL_SERVICES = [
   'zendesk',
 ];
 
-function friendlyServiceName(service: Service): string {
+function friendlyServiceName(service: NetlifyGraphAuthService): string {
   switch (service) {
     case 'adroll':
       return 'Adroll';
@@ -270,7 +270,7 @@ function createAuthWindow({
   service,
 }: {
   url?: string | undefined;
-  service: Service;
+  service: NetlifyGraphAuthService;
 }): Window | null {
   const windowOpts = getWindowOpts();
   const w = window.open(
@@ -526,16 +526,16 @@ const DEFAULT_GRAPH_ORIGIN = 'https://serve.onegraph.com';
 
 type _makeAuthUrlInput = {
   scopes: Array<string> | undefined;
-  service: Service;
+  service: NetlifyGraphAuthService;
   stateParam: string;
   useTestFlow: boolean | undefined;
   verifier: string;
 };
 
-class NetlifyGraphAuth {
-  _authWindows: {[key in Service]?: Window | null} = {};
-  _intervalIds: {[key in Service]?: Timer} = {};
-  _messageListeners: {[key in Service]?: any} = {};
+export class NetlifyGraphAuth {
+  _authWindows: {[key in NetlifyGraphAuthService]?: Window | null} = {};
+  _intervalIds: {[key in NetlifyGraphAuthService]?: Timer} = {};
+  _messageListeners: {[key in NetlifyGraphAuthService]?: any} = {};
   _fetchUrl: string;
   _redirectOrigin: string;
   _redirectPath: string;
@@ -576,14 +576,18 @@ class NetlifyGraphAuth {
     this._communicationMode = opts.communicationMode || 'post_message';
   }
 
-  _clearInterval: (service: Service) => void = (service: Service) => {
+  _clearInterval: (service: NetlifyGraphAuthService) => void = (
+    service: NetlifyGraphAuthService,
+  ) => {
     const intervalId = this._intervalIds[service];
     // @ts-ignore: Some nodejs vs browser type nonsense
     clearInterval(intervalId);
     delete this._intervalIds[service];
   };
 
-  _clearMessageListener: (service: Service) => void = (service: Service) => {
+  _clearMessageListener: (service: NetlifyGraphAuthService) => void = (
+    service: NetlifyGraphAuthService,
+  ) => {
     window.removeEventListener(
       'message',
       this._messageListeners[service],
@@ -592,16 +596,18 @@ class NetlifyGraphAuth {
     delete this._messageListeners[service];
   };
 
-  closeAuthWindow: (service: Service) => void = (service: Service) => {
+  closeAuthWindow: (service: NetlifyGraphAuthService) => void = (
+    service: NetlifyGraphAuthService,
+  ) => {
     const w = this._authWindows[service];
     w && w.close();
     delete this._authWindows[service];
   };
 
-  cleanup: (service: Service, keepWindowOpen?: boolean) => void = (
-    service: Service,
+  cleanup: (
+    service: NetlifyGraphAuthService,
     keepWindowOpen?: boolean,
-  ) => {
+  ) => void = (service: NetlifyGraphAuthService, keepWindowOpen?: boolean) => {
     this._clearInterval(service);
     this._clearMessageListener(service);
     if (!keepWindowOpen) {
@@ -686,7 +692,7 @@ class NetlifyGraphAuth {
     }
   };
 
-  friendlyServiceName(service: Service): string {
+  friendlyServiceName(service: NetlifyGraphAuthService): string {
     return friendlyServiceName(service);
   }
 
@@ -725,11 +731,11 @@ class NetlifyGraphAuth {
   };
 
   _waitForAuthFinishPostMessage: (
-    service: Service,
+    service: NetlifyGraphAuthService,
     stateParam: StateParam,
     verifier: string,
   ) => Promise<AuthResponse> = (
-    service: Service,
+    service: NetlifyGraphAuthService,
     stateParam: StateParam,
     verifier: string,
   ): Promise<AuthResponse> => {
@@ -806,11 +812,11 @@ class NetlifyGraphAuth {
   };
 
   _waitForAuthFinishRedirect: (
-    service: Service,
+    service: NetlifyGraphAuthService,
     stateParam: StateParam,
     verifier: string,
   ) => Promise<AuthResponse> = (
-    service: Service,
+    service: NetlifyGraphAuthService,
     stateParam: StateParam,
     verifier: string,
   ): Promise<AuthResponse> => {
@@ -895,11 +901,11 @@ class NetlifyGraphAuth {
    * @throws {OAuthError}
    */
   login: (
-    service: Service,
+    service: NetlifyGraphAuthService,
     scopes: Array<string> | undefined,
     useTestFlow?: boolean,
   ) => Promise<AuthResponse> = async (
-    service: Service,
+    service: NetlifyGraphAuthService,
     scopes: Array<string> | undefined,
     useTestFlow?: boolean,
   ): Promise<AuthResponse> => {
@@ -951,9 +957,9 @@ class NetlifyGraphAuth {
   };
 
   isLoggedIn: (
-    args: Service | {foreignUserId?: string; service: string},
+    args: NetlifyGraphAuthService | {foreignUserId?: string; service: string},
   ) => Promise<boolean> = async (
-    args: Service | {service: string; foreignUserId?: string},
+    args: NetlifyGraphAuthService | {service: string; foreignUserId?: string},
   ): Promise<boolean> => {
     const accessToken = this._accessToken;
     if (accessToken) {
@@ -1050,58 +1056,67 @@ class NetlifyGraphAuth {
       }
     };
 
-  logout: (service: Service, foreignUserId?: string) => Promise<LogoutResult> =
-    async (service: Service, foreignUserId?: string): Promise<LogoutResult> => {
-      if (!service) {
-        throw new Error(
-          "Missing required argument. Provide service as first argument to logout (e.g. `auth.logout('stripe')`).",
-        );
-      }
-      this.cleanup(service);
-      const accessToken = this._accessToken;
-      if (accessToken) {
-        const serviceEnum = getServiceEnum(service);
+  logout: (
+    service: NetlifyGraphAuthService,
+    foreignUserId?: string,
+  ) => Promise<LogoutResult> = async (
+    service: NetlifyGraphAuthService,
+    foreignUserId?: string,
+  ): Promise<LogoutResult> => {
+    if (!service) {
+      throw new Error(
+        "Missing required argument. Provide service as first argument to logout (e.g. `auth.logout('stripe')`).",
+      );
+    }
+    this.cleanup(service);
+    const accessToken = this._accessToken;
+    if (accessToken) {
+      const serviceEnum = getServiceEnum(service);
 
-        const signoutPromise = foreignUserId
-          ? fetchQuery(
-              this._fetchUrl,
-              logoutUserMutation,
-              {
-                service: serviceEnum,
-                foreignUserId: foreignUserId,
-              },
-              accessToken,
-            )
-          : fetchQuery(
-              this._fetchUrl,
-              logoutMutation,
-              {
-                services: [serviceEnum],
-              },
-              accessToken,
-            );
-        const result = await signoutPromise;
-        if (
-          result.errors?.length &&
-          getServiceErrors(result.errors, serviceEnum).length
-        ) {
-          return {result: 'failure', errors: result.errors};
-        } else {
-          const loggedIn = getIsLoggedIn(
-            {data: result.signoutServices},
-            service,
-            foreignUserId,
+      const signoutPromise = foreignUserId
+        ? fetchQuery(
+            this._fetchUrl,
+            logoutUserMutation,
+            {
+              service: serviceEnum,
+              foreignUserId: foreignUserId,
+            },
+            accessToken,
+          )
+        : fetchQuery(
+            this._fetchUrl,
+            logoutMutation,
+            {
+              services: [serviceEnum],
+            },
+            accessToken,
           );
-          return {result: loggedIn ? 'failure' : 'success'};
-        }
+      const result = await signoutPromise;
+      if (
+        result.errors?.length &&
+        getServiceErrors(result.errors, serviceEnum).length
+      ) {
+        return {result: 'failure', errors: result.errors};
       } else {
-        return Promise.resolve({result: 'failure'});
+        const loggedIn = getIsLoggedIn(
+          {data: result.signoutServices},
+          service,
+          foreignUserId,
+        );
+        return {result: loggedIn ? 'failure' : 'success'};
       }
-    };
+    } else {
+      return Promise.resolve({result: 'failure'});
+    }
+  };
 
   destroy: () => void = () => {
-    Object.keys(this._intervalIds).forEach((key: Service) => this.cleanup(key));
-    Object.keys(this._authWindows).forEach((key: Service) => this.cleanup(key));
+    Object.keys(this._intervalIds).forEach((key: NetlifyGraphAuthService) =>
+      this.cleanup(key),
+    );
+    Object.keys(this._authWindows).forEach((key: NetlifyGraphAuthService) =>
+      this.cleanup(key),
+    );
     this._storage.removeItem(this._storageKey);
     this._accessToken = null;
   };
