@@ -1,6 +1,6 @@
 {
   "name": "netlify-graph-auth",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Client-side authentication for Netlify GraphQL APIs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

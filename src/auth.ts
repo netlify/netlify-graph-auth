@@ -902,7 +902,7 @@ export class NetlifyGraphAuth {
    */
   login: (
     service: NetlifyGraphAuthService,
-    scopes: Array<string> | undefined,
+    scopes?: Array<string> | undefined,
     useTestFlow?: boolean,
   ) => Promise<AuthResponse> = async (
     service: NetlifyGraphAuthService,
