@@ -8,7 +8,7 @@ import type {Storage} from './storage';
 
 type Timer = ReturnType<typeof setTimeout>;
 
-export type NetlifyGraphAuthService =
+export type NetlifyGraphAuthStaticService =
   | 'adroll'
   | 'asana'
   | 'box'
@@ -50,6 +50,15 @@ export type NetlifyGraphAuthService =
   | 'zeit'
   | 'zendesk';
 
+type StaticService = {type: 'service'; service: NetlifyGraphAuthStaticService};
+type ServiceByGQLField = {type: 'gqlField'; graphQLField: string};
+type Service = StaticService | ServiceByGQLField;
+
+export type NetlifyGraphAuthService =
+  | NetlifyGraphAuthStaticService
+  | {service: NetlifyGraphAuthStaticService}
+  | {graphQLField: string};
+
 type CommunicationMode = 'post_message' | 'redirect';
 
 export type Opts = {
@@ -87,7 +96,6 @@ export type LoggedInServices = {
 };
 
 export type ServiceInfo = {
-  service: string;
   serviceEnum: string;
   friendlyServiceName: string;
   supportsTestFlow: boolean;
@@ -96,14 +104,48 @@ export type ServiceInfo = {
 export type ServicesList = Array<ServiceInfo>;
 
 export type ServicesStatus = {
-  [key in NetlifyGraphAuthService]?: ServiceStatus;
+  string?: ServiceStatus;
 };
 
 export type AuthResponse = {
   token: Token;
-  service?: string;
+  service?: Service;
   foreignUserId?: string;
 };
+
+function getService(arg: NetlifyGraphAuthService): Service | undefined {
+  if (typeof arg === 'string') {
+    return {type: 'service', service: arg as NetlifyGraphAuthStaticService};
+  } else {
+    if ('graphQLField' in arg) {
+      return {type: 'gqlField', graphQLField: arg.graphQLField};
+    } else if ('service' in arg) {
+      return {type: 'service', service: arg.service};
+    }
+  }
+}
+
+function serializeService(arg: Service): string {
+  const value = arg.type === 'service' ? arg.service : arg.graphQLField;
+  return arg.type + ':' + value;
+}
+function deserializeService(x: string): Service {
+  const parts = x.split(':');
+
+  if (parts.length !== 2) {
+    throw new Error('TODO parts');
+  }
+
+  const [type, value] = parts;
+
+  if (type === 'service') {
+    return {type, service: value as NetlifyGraphAuthStaticService};
+  } else if (type === 'gqlField') {
+    return {type, graphQLField: value};
+  }
+
+  throw new Error('TODO return');
+}
 
 // type Window = any;
 
@@ -111,133 +153,135 @@ type StateParam = string;
 
 const POLL_INTERVAL = 35;
 
-const ALL_SERVICES = [
-  'adroll',
-  'asana',
-  'box',
-  'contentful',
-  'dev-to',
-  'dribbble',
-  'dropbox',
-  'eggheadio',
-  'eventil',
-  'facebook',
-  'firebase',
-  'github',
-  'gmail',
-  'google',
-  'google-ads',
-  'google-analytics',
-  'google-calendar',
-  'google-compute',
-  'google-docs',
-  'google-search-console',
-  'google-translate',
-  'hubspot',
-  'intercom',
-  'mailchimp',
-  'meetup',
-  'netlify',
-  'product-hunt',
-  'quickbooks',
-  'salesforce',
-  'slack',
-  'spotify',
-  'stripe',
-  'trello',
-  'twilio',
-  'twitch-tv',
-  'twitter',
-  'ynab',
-  'youtube',
-  'zeit',
-  'zendesk',
-];
+function friendlyServiceName(service: Service): string {
+  if (service.type === 'service') {
+    switch (service.service) {
+      case 'adroll':
+        return 'Adroll';
+      case 'asana':
+        return 'Asana';
+      case 'box':
+        return 'Box';
+      case 'dev-to':
+        return 'Dev.to';
+      case 'dribbble':
+        return 'Dribbble';
+      case 'dropbox':
+        return 'Dropbox';
+      case 'contentful':
+        return 'Contentful';
+      case 'eggheadio':
+        return 'Egghead.io';
+      case 'eventil':
+        return 'Eventil';
+      case 'facebook':
+        return 'Facebook';
+      case 'firebase':
+        return 'Firebase';
+      case 'github':
+        return 'GitHub';
+      case 'gmail':
+        return 'Gmail';
+      case 'google':
+        return 'Google';
+      case 'google-ads':
+        return 'Google Ads';
+      case 'google-analytics':
+        return 'Google Analytics';
+      case 'google-calendar':
+        return 'Google Calendar';
+      case 'google-compute':
+        return 'Google Compute';
+      case 'google-docs':
+        return 'Google Docs';
+      case 'google-search-console':
+        return 'Google Search Console';
+      case 'google-translate':
+        return 'Google Translate';
+      case 'hubspot':
+        return 'Hubspot';
+      case 'intercom':
+        return 'Intercom';
+      case 'mailchimp':
+        return 'Mailchimp';
+      case 'meetup':
+        return 'Meetup';
+      case 'netlify':
+        return 'Netlify';
+      case 'product-hunt':
+        return 'Product Hunt';
+      case 'quickbooks':
+        return 'QuickBooks';
+      case 'salesforce':
+        return 'Salesforce';
+      case 'slack':
+        return 'Slack';
+      case 'spotify':
+        return 'Spotify';
+      case 'stripe':
+        return 'Stripe';
+      case 'trello':
+        return 'Trello';
+      case 'twilio':
+        return 'Twilio';
+      case 'twitter':
+        return 'Twitter';
+      case 'twitch-tv':
+        return 'Twitch';
+      case 'ynab':
+        return 'You Need a Budget';
+      case 'youtube':
+        return 'YouTube';
+      case 'zeit':
+        return 'Vercel';
+      case 'zendesk':
+        return 'Zendesk';
+      default:
+        return service.service;
+    }
+  } else {
+    return 'service identified by field ' + service.graphQLField;
+  }
+}
 
-function friendlyServiceName(service: NetlifyGraphAuthService): string {
-  switch (service) {
-    case 'adroll':
-      return 'Adroll';
-    case 'asana':
-      return 'Asana';
-    case 'box':
-      return 'Box';
-    case 'dev-to':
-      return 'Dev.to';
-    case 'dribbble':
-      return 'Dribbble';
-    case 'dropbox':
-      return 'Dropbox';
-    case 'contentful':
-      return 'Contentful';
-    case 'eggheadio':
-      return 'Egghead.io';
-    case 'eventil':
-      return 'Eventil';
-    case 'facebook':
-      return 'Facebook';
-    case 'firebase':
-      return 'Firebase';
-    case 'github':
-      return 'GitHub';
-    case 'gmail':
-      return 'Gmail';
-    case 'google':
-      return 'Google';
-    case 'google-ads':
-      return 'Google Ads';
-    case 'google-analytics':
-      return 'Google Analytics';
-    case 'google-calendar':
-      return 'Google Calendar';
-    case 'google-compute':
-      return 'Google Compute';
-    case 'google-docs':
-      return 'Google Docs';
-    case 'google-search-console':
-      return 'Google Search Console';
-    case 'google-translate':
-      return 'Google Translate';
-    case 'hubspot':
-      return 'Hubspot';
-    case 'intercom':
-      return 'Intercom';
-    case 'mailchimp':
-      return 'Mailchimp';
-    case 'meetup':
-      return 'Meetup';
-    case 'netlify':
-      return 'Netlify';
-    case 'product-hunt':
-      return 'Product Hunt';
-    case 'quickbooks':
-      return 'QuickBooks';
-    case 'salesforce':
-      return 'Salesforce';
-    case 'slack':
-      return 'Slack';
-    case 'spotify':
-      return 'Spotify';
-    case 'stripe':
-      return 'Stripe';
-    case 'trello':
-      return 'Trello';
-    case 'twilio':
-      return 'Twilio';
-    case 'twitter':
-      return 'Twitter';
-    case 'twitch-tv':
-      return 'Twitch';
-    case 'ynab':
-      return 'You Need a Budget';
-    case 'youtube':
-      return 'YouTube';
-    case 'zeit':
-      return 'Vercel';
-    case 'zendesk':
-      return 'Zendesk';
-    default:
-      return service;
+function camelCase(s) {
+  return s.replace(/-./g, (x) => x[1].toUpperCase());
+}
+
+function getOAuthURLSegment(service: Service) {
+  if (service.type === 'service') {
+    return service.service;
+  } else {
+    switch (service.graphQLField) {
+      case 'gitHub':
+        return 'github';
+      case 'youTube':
+        return 'youtube';
+      case 'facebookBusiness':
+        return 'facebook';
+      case 'devTo':
+        return 'dev-to';
+      case 'googleAds':
+        return 'google-ads';
+      case 'googleAnalytics':
+        return 'google-analytics';
+      case 'googleCalendar':
+        return 'google-calendar';
+      case 'googleCompute':
+        return 'google-compute';
+      case 'googleDocs':
+        return 'google-docs';
+      case 'googleSearchConsole':
+        return 'google-search-console';
+      case 'googleTranslate':
+        return 'google-translate';
+      case 'productHunt':
+        return 'product-hunt';
+      case 'twitchTv':
+        return 'twitch-tv';
+      default:
+        return service.graphQLField;
+    }
   }
 }
 
@@ -270,13 +314,13 @@ function createAuthWindow({
   service,
 }: {
   url?: string | undefined;
-  service: NetlifyGraphAuthService;
+  service: Service;
 }): Window | null {
   const windowOpts = getWindowOpts();
   const w = window.open(
     url || '',
-    // A unqiue name prevents orphaned popups from stealing our window.open
-    `${service}_${Math.random()}`.replace('.', ''),
+    // A unique name prevents orphaned popups from stealing our window.open
+    `${getOAuthURLSegment(service)}_${Math.random()}`.replace('.', ''),
     Object.keys(windowOpts)
       .map((k) => `${k}=${windowOpts[k]}`)
       .join(','),
@@ -309,7 +353,9 @@ query LoggedInQuery {
   me {
     serviceMetadata {
       loggedInServices {
-        service
+        id
+        friendlyServiceName
+        graphQLField
         foreignUserId
         usedTestFlow
       }
@@ -322,8 +368,9 @@ const allServicesQuery = `
 query AllServicesQuery {
   oneGraph {
     services(filter: {supportsOauthLogin: true}) {
-      service
+      id
       friendlyServiceName
+      graphQLField
       supportsTestFlow
     }
   }
@@ -340,17 +387,26 @@ function fromServiceEnum(serviceEnum: string): string {
 
 function getIsLoggedIn(
   queryResult: Record<string, any>,
-  service: string,
+  service: Service,
   foreignUserId?: string | null | undefined,
 ): boolean {
-  const serviceEnum = getServiceEnum(service);
   const loggedInServices =
     queryResult?.data?.me?.serviceMetadata?.loggedInServices || [];
-  return !!loggedInServices.find(
-    (serviceInfo) =>
-      serviceInfo.service === serviceEnum &&
-      (!foreignUserId || foreignUserId === serviceInfo.foreignUserId),
-  );
+  return !!loggedInServices.find((serviceInfo) => {
+    if (service.type === 'service') {
+      const serviceEnum = getServiceEnum(service.service);
+
+      return (
+        serviceInfo.service === serviceEnum &&
+        (!foreignUserId || foreignUserId === serviceInfo.foreignUserId)
+      );
+    } else {
+      return (
+        serviceInfo.graphQLField === service.graphQLField &&
+        (!foreignUserId || foreignUserId === serviceInfo.foreignUserId)
+      );
+    }
+  });
 }
 
 function getServiceErrors(errors: {path: string[]}[], service: string) {
@@ -358,13 +414,19 @@ function getServiceErrors(errors: {path: string[]}[], service: string) {
 }
 
 const logoutMutation = `mutation SignOutServicesMutation(
-  $services: [OneGraphServiceEnum!]!
+  $servicesGraphQLFields: [String!]
+  $services: [OneGraphServiceEnum!]
 ) {
-  signoutServices(data: { services: $services }) {
+  signoutServices(data: { 
+    $services: $services
+    $servicesGraphQLFields: $servicesGraphQLFields
+   }) {
     me {
       serviceMetadata {
         loggedInServices {
-          service
+          id
+          graphQLField
+          friendlyServiceName
           foreignUserId
         }
       }
@@ -373,12 +435,14 @@ const logoutMutation = `mutation SignOutServicesMutation(
 }`;
 
 const logoutUserMutation = `mutation SignOutServicesMutation(
-  $service: OneGraphServiceEnum!
+  $service: OneGraphServiceEnum
+  $graphQLField: String
   $foreignUserId: String!
 ) {
   signoutServiceUser(
     input: {
       service: $service
+      graphQLField: $graphQLField
       foreignUserId: $foreignUserId
     }
   ) {
@@ -458,6 +522,7 @@ type ExchangeRefreshTokenSuccessResponse = {
   refresh_token: string;
   expires_in: number;
   service: string;
+  service_graphql_field: string;
   foreign_user_id: string | undefined;
 };
 
@@ -526,16 +591,16 @@ const DEFAULT_GRAPH_ORIGIN = 'https://serve.onegraph.com';
 
 type _makeAuthUrlInput = {
   scopes: Array<string> | undefined;
-  service: NetlifyGraphAuthService;
+  service: Service;
   stateParam: string;
   useTestFlow: boolean | undefined;
   verifier: string;
 };
 
 export class NetlifyGraphAuth {
-  _authWindows: {[key in NetlifyGraphAuthService]?: Window | null} = {};
-  _intervalIds: {[key in NetlifyGraphAuthService]?: Timer} = {};
-  _messageListeners: {[key in NetlifyGraphAuthService]?: any} = {};
+  _authWindows: {string?: Window | null} = {};
+  _intervalIds: {string?: Timer} = {};
+  _messageListeners: {string?: any} = {};
   _fetchUrl: string;
   _redirectOrigin: string;
   _redirectPath: string;
@@ -545,7 +610,6 @@ export class NetlifyGraphAuth {
   _storageKey: string;
   _storage: Storage;
   _communicationMode: CommunicationMode;
-  supportedServices: Array<string> = ALL_SERVICES;
 
   constructor(opts: Opts) {
     const {siteId, oauthFinishOrigin, oauthFinishPath} = opts;
@@ -576,18 +640,14 @@ export class NetlifyGraphAuth {
     this._communicationMode = opts.communicationMode || 'post_message';
   }
 
-  _clearInterval: (service: NetlifyGraphAuthService) => void = (
-    service: NetlifyGraphAuthService,
-  ) => {
+  _clearInterval: (service: string) => void = (service: string) => {
     const intervalId = this._intervalIds[service];
     // @ts-ignore: Some nodejs vs browser type nonsense
     clearInterval(intervalId);
     delete this._intervalIds[service];
   };
 
-  _clearMessageListener: (service: NetlifyGraphAuthService) => void = (
-    service: NetlifyGraphAuthService,
-  ) => {
+  _clearMessageListener: (service: string) => void = (service: string) => {
     window.removeEventListener(
       'message',
       this._messageListeners[service],
@@ -596,18 +656,16 @@ export class NetlifyGraphAuth {
     delete this._messageListeners[service];
   };
 
-  closeAuthWindow: (service: NetlifyGraphAuthService) => void = (
-    service: NetlifyGraphAuthService,
-  ) => {
+  closeAuthWindow: (service: string) => void = (service: string) => {
     const w = this._authWindows[service];
     w && w.close();
     delete this._authWindows[service];
   };
 
-  cleanup: (
-    service: NetlifyGraphAuthService,
+  cleanup: (service: string, keepWindowOpen?: boolean) => void = (
+    service: string,
     keepWindowOpen?: boolean,
-  ) => void = (service: NetlifyGraphAuthService, keepWindowOpen?: boolean) => {
+  ) => {
     this._clearInterval(service);
     this._clearMessageListener(service);
     if (!keepWindowOpen) {
@@ -692,7 +750,7 @@ export class NetlifyGraphAuth {
     }
   };
 
-  friendlyServiceName(service: NetlifyGraphAuthService): string {
+  friendlyServiceName(service: Service): string {
     return friendlyServiceName(service);
   }
 
@@ -702,7 +760,7 @@ export class NetlifyGraphAuth {
     const {service, verifier, stateParam, scopes, useTestFlow} = opts;
     const challenge = await PKCE.codeChallengeOfVerifier(verifier);
     const query: any = {
-      service,
+      service: getOAuthURLSegment(service),
       app_id: this.siteId,
       response_type: 'code',
       redirect_origin: this._redirectOrigin,
@@ -731,14 +789,15 @@ export class NetlifyGraphAuth {
   };
 
   _waitForAuthFinishPostMessage: (
-    service: NetlifyGraphAuthService,
+    service: Service,
     stateParam: StateParam,
     verifier: string,
   ) => Promise<AuthResponse> = (
-    service: NetlifyGraphAuthService,
+    service: Service,
     stateParam: StateParam,
     verifier: string,
   ): Promise<AuthResponse> => {
+    const serviceString = serializeService(service);
     return new Promise((resolve, reject) => {
       function parseEvent(event) {
         try {
@@ -794,7 +853,7 @@ export class NetlifyGraphAuth {
                     this.setToken(token);
                     resolve({
                       token,
-                      service: successResponse.service,
+                      service: {type: 'gqlField', graphQLField: successResponse.service_graphql_field},
                       foreignUserId: successResponse.foreign_user_id,
                     });
                   } else {
@@ -806,24 +865,25 @@ export class NetlifyGraphAuth {
           }
         }
       };
-      this._messageListeners[service] = listener;
+      this._messageListeners[serviceString] = listener;
       window.addEventListener('message', listener, false);
     });
   };
 
   _waitForAuthFinishRedirect: (
-    service: NetlifyGraphAuthService,
+    service: Service,
     stateParam: StateParam,
     verifier: string,
   ) => Promise<AuthResponse> = (
-    service: NetlifyGraphAuthService,
+    service: Service,
     stateParam: StateParam,
     verifier: string,
   ): Promise<AuthResponse> => {
     return new Promise((resolve, reject) => {
-      this._intervalIds[service] = setInterval(() => {
+      const serviceString = serializeService(service);
+      this._intervalIds[serviceString] = setInterval(() => {
         try {
-          const authWindow = this._authWindows[service];
+          const authWindow = this._authWindows[serviceString];
           const authUri =
             authWindow && URI.safeParse(authWindow.location.toString());
           if (authUri && authUri.origin === this._redirectOrigin) {
@@ -905,10 +965,11 @@ export class NetlifyGraphAuth {
     scopes?: Array<string> | undefined,
     useTestFlow?: boolean,
   ) => Promise<AuthResponse> = async (
-    service: NetlifyGraphAuthService,
+    serviceInput: NetlifyGraphAuthService,
     scopes: Array<string> | undefined,
     useTestFlow?: boolean,
   ): Promise<AuthResponse> => {
+    const service = getService(serviceInput);
     if (!service) {
       throw new OAuthError({
         error: 'invalid_request',
@@ -916,7 +977,8 @@ export class NetlifyGraphAuth {
           "Missing required argument. Provide service as first argument to login (e.g. `auth.login('stripe')`).",
       });
     }
-    this.cleanup(service);
+    const serviceString = serializeService(service);
+    this.cleanup(serviceString);
     const stateParam = makeStateParam();
     const verifier = PKCE.generateVerifier();
     // Create an auth window without a URL initially so that browser associates
@@ -924,7 +986,7 @@ export class NetlifyGraphAuth {
     // If we waited until _makeAuthUrl's promise resolved, we might trigger
     // a popup blocker
     const authWindow = createAuthWindow({service});
-    this._authWindows[service] = authWindow;
+    this._authWindows[serviceString] = authWindow;
     const authFinish =
       this._communicationMode === 'redirect'
         ? this._waitForAuthFinishRedirect
@@ -948,10 +1010,10 @@ export class NetlifyGraphAuth {
         });
       }
       const result_3 = await authFinish(service, stateParam, verifier);
-      this.cleanup(service);
+      this.cleanup(serviceString);
       return result_3;
     } catch (e_1) {
-      this.cleanup(service, true);
+      this.cleanup(serviceString, true);
       throw e_1;
     }
   };
@@ -959,18 +1021,29 @@ export class NetlifyGraphAuth {
   isLoggedIn: (
     args: NetlifyGraphAuthService | {foreignUserId?: string; service: string},
   ) => Promise<boolean> = async (
-    args: NetlifyGraphAuthService | {service: string; foreignUserId?: string},
+    args: NetlifyGraphAuthService | {foreignUserId?: string; service: string},
   ): Promise<boolean> => {
     const accessToken = this._accessToken;
     if (accessToken) {
-      const service = typeof args === 'string' ? args : args.service;
+      const serviceInput =
+        typeof args === 'string'
+          ? args
+          : 'service' in args
+          ? (args.service as NetlifyGraphAuthStaticService)
+          : args;
+      const service = getService(serviceInput);
+
       if (!service) {
         throw new Error(
           "Missing required argument. Provide service as first argument to isLoggedIn (e.g. `auth.isLoggedIn('stripe')`).",
         );
       }
       const foreignUserId =
-        typeof args === 'string' ? null : args.foreignUserId;
+        typeof args === 'string'
+          ? null
+          : 'foreignUserId' in args
+          ? args.foreignUserId
+          : null;
       const result = await fetchQuery(
         this._fetchUrl,
         loggedInQuery,
@@ -982,30 +1055,6 @@ export class NetlifyGraphAuth {
       return Promise.resolve(false);
     }
   };
-
-  servicesStatus: () => Promise<ServicesStatus> =
-    async (): Promise<ServicesStatus> => {
-      const accessToken = this._accessToken;
-      if (accessToken) {
-        const result = await fetchQuery(
-          this._fetchUrl,
-          loggedInQuery,
-          {},
-          accessToken,
-        );
-        return ALL_SERVICES.reduce((acc, service) => {
-          acc[service] = {isLoggedIn: getIsLoggedIn(result, service)};
-          return acc;
-        }, {});
-      } else {
-        return Promise.resolve(
-          ALL_SERVICES.reduce((acc, service) => {
-            acc[service] = {isLoggedIn: false};
-            return acc;
-          }, {}),
-        );
-      }
-    };
 
   allServices: () => Promise<ServicesList> =
     async (): Promise<ServicesList> => {
@@ -1060,41 +1109,50 @@ export class NetlifyGraphAuth {
     service: NetlifyGraphAuthService,
     foreignUserId?: string,
   ) => Promise<LogoutResult> = async (
-    service: NetlifyGraphAuthService,
+    serviceInput: NetlifyGraphAuthService,
     foreignUserId?: string,
   ): Promise<LogoutResult> => {
+    const service = getService(serviceInput);
     if (!service) {
       throw new Error(
         "Missing required argument. Provide service as first argument to logout (e.g. `auth.logout('stripe')`).",
       );
     }
-    this.cleanup(service);
+    const serviceString = serializeService(service);
+    this.cleanup(serviceString);
     const accessToken = this._accessToken;
     if (accessToken) {
-      const serviceEnum = getServiceEnum(service);
-
       const signoutPromise = foreignUserId
         ? fetchQuery(
             this._fetchUrl,
             logoutUserMutation,
-            {
-              service: serviceEnum,
-              foreignUserId: foreignUserId,
-            },
+            Object.assign(
+              {
+                foreignUserId: foreignUserId,
+              },
+              service.type === 'service'
+                ? {service: service.service}
+                : {graphQLField: service.graphQLField},
+            ),
             accessToken,
           )
         : fetchQuery(
             this._fetchUrl,
             logoutMutation,
-            {
-              services: [serviceEnum],
-            },
+            service.type === 'service'
+              ? {
+                  services: [getServiceEnum(service.service)],
+                }
+              : {servicesGraphQLFields: service.graphQLField},
             accessToken,
           );
       const result = await signoutPromise;
       if (
         result.errors?.length &&
-        getServiceErrors(result.errors, serviceEnum).length
+        getServiceErrors(
+          result.errors,
+          service.type === 'service' ? service.service : service.graphQLField,
+        ).length
       ) {
         return {result: 'failure', errors: result.errors};
       } else {
@@ -1111,12 +1169,8 @@ export class NetlifyGraphAuth {
   };
 
   destroy: () => void = () => {
-    Object.keys(this._intervalIds).forEach((key: NetlifyGraphAuthService) =>
-      this.cleanup(key),
-    );
-    Object.keys(this._authWindows).forEach((key: NetlifyGraphAuthService) =>
-      this.cleanup(key),
-    );
+    Object.keys(this._intervalIds).forEach((key: string) => this.cleanup(key));
+    Object.keys(this._authWindows).forEach((key: string) => this.cleanup(key));
     this._storage.removeItem(this._storageKey);
     this._accessToken = null;
   };
