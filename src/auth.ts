@@ -129,25 +129,6 @@ function serializeService(arg: Service): string {
   const value = arg.type === 'service' ? arg.service : arg.graphQLField;
   return arg.type + ':' + value;
 }
-function deserializeService(x: string): Service {
-  const parts = x.split(':');
-
-  if (parts.length !== 2) {
-    throw new Error('TODO parts');
-  }
-
-  const [type, value] = parts;
-
-  if (type === 'service') {
-    return {type, service: value as NetlifyGraphAuthStaticService};
-  } else if (type === 'gqlField') {
-    return {type, graphQLField: value};
-  }
-
-  throw new Error('TODO return');
-}
-
-// type Window = any;
 
 type StateParam = string;
 
@@ -240,7 +221,7 @@ function friendlyServiceName(service: Service): string {
         return service.service;
     }
   } else {
-    return 'service identified by field ' + service.graphQLField;
+    return service.graphQLField;
   }
 }
 
@@ -417,7 +398,7 @@ const logoutMutation = `mutation SignOutServicesMutation(
   $servicesGraphQLFields: [String!]
   $services: [OneGraphServiceEnum!]
 ) {
-  signoutServices(data: { 
+  signoutServices(data: {
     $services: $services
     $servicesGraphQLFields: $servicesGraphQLFields
    }) {
