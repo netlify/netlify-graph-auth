@@ -834,7 +834,10 @@ export class NetlifyGraphAuth {
                     this.setToken(token);
                     resolve({
                       token,
-                      service: {type: 'gqlField', graphQLField: successResponse.service_graphql_field},
+                      service: {
+                        type: 'gqlField',
+                        graphQLField: successResponse.service_graphql_field,
+                      },
                       foreignUserId: successResponse.foreign_user_id,
                     });
                   } else {
