@@ -88,15 +88,15 @@ export type ServiceStatus = {
 };
 
 export type LoggedInServices = {
-  [service: string]: {
-    serviceEnum: string;
+  [serviceByGraphQLField: string]: {
+    graphQLField: string;
     foreignUserIds: Array<string>;
     usedTestFlow: boolean;
   };
 };
 
 export type ServiceInfo = {
-  serviceEnum: string;
+  graphQLField: string;
   friendlyServiceName: string;
   supportsTestFlow: boolean;
 };
@@ -335,8 +335,11 @@ query LoggedInQuery {
     serviceMetadata {
       loggedInServices {
         id
+        service
         friendlyServiceName
-        graphQLField
+        serviceInfo {
+          graphQLField
+        }
         foreignUserId
         usedTestFlow
       }
@@ -344,6 +347,32 @@ query LoggedInQuery {
   }
 }
 `;
+
+type LoggedInQueryResult = {
+  /**
+   * Any data from the function will be returned here
+   */
+  data: {
+    me: {
+      serviceMetadata: {
+        loggedInServices: Array<{
+          id: string;
+          service: NetlifyGraphAuthStaticService;
+          friendlyServiceName: string;
+          serviceInfo: {
+            graphQLField: string;
+          };
+          foreignUserId: string;
+          usedTestFlow: boolean;
+        }>;
+      };
+    };
+  };
+  /**
+   * Any errors from the function will be returned here
+   */
+  errors?: Array<unknown>;
+};
 
 const allServicesQuery = `
 query AllServicesQuery {
@@ -367,7 +396,7 @@ function fromServiceEnum(serviceEnum: string): string {
 }
 
 function getIsLoggedIn(
-  queryResult: Record<string, any>,
+  queryResult: LoggedInQueryResult,
   service: Service,
   foreignUserId?: string | null | undefined,
 ): boolean {
@@ -383,7 +412,7 @@ function getIsLoggedIn(
       );
     } else {
       return (
-        serviceInfo.graphQLField === service.graphQLField &&
+        serviceInfo.serviceInfo.graphQLField === service.graphQLField &&
         (!foreignUserId || foreignUserId === serviceInfo.foreignUserId)
       );
     }
@@ -406,9 +435,13 @@ const logoutMutation = `mutation SignOutServicesMutation(
       serviceMetadata {
         loggedInServices {
           id
-          graphQLField
+          service
           friendlyServiceName
+          serviceInfo {
+            graphQLField
+          }
           foreignUserId
+          usedTestFlow
         }
       }
     }
@@ -430,8 +463,14 @@ const logoutUserMutation = `mutation SignOutServicesMutation(
     me {
       serviceMetadata {
         loggedInServices {
+          id
           service
+          friendlyServiceName
+          serviceInfo {
+            graphQLField
+          }
           foreignUserId
+          usedTestFlow
         }
       }
     }
@@ -1028,12 +1067,12 @@ export class NetlifyGraphAuth {
           : 'foreignUserId' in args
           ? args.foreignUserId
           : null;
-      const result = await fetchQuery(
+      const result = (await fetchQuery(
         this._fetchUrl,
         loggedInQuery,
         {},
         accessToken,
-      );
+      )) as LoggedInQueryResult;
       return getIsLoggedIn(result, service, foreignUserId);
     } else {
       return Promise.resolve(false);
@@ -1060,21 +1099,23 @@ export class NetlifyGraphAuth {
     async (): Promise<LoggedInServices> => {
       const accessToken = this._accessToken;
       if (accessToken) {
-        const result = await fetchQuery(
+        const result = (await fetchQuery(
           this._fetchUrl,
           loggedInQuery,
           {},
           accessToken,
-        );
+        )) as LoggedInQueryResult;
         const loggedInServices =
           result?.data?.me?.serviceMetadata?.loggedInServices || [];
         return loggedInServices.reduce((acc, serviceInfo) => {
-          const serviceKey = fromServiceEnum(serviceInfo.service);
-          const loggedInInfo = acc[serviceKey] || {
-            serviceEnum: serviceInfo.service,
+          const graphQLField = fromServiceEnum(
+            serviceInfo.serviceInfo.graphQLField,
+          );
+          const loggedInInfo = acc[graphQLField] || {
+            graphQLField: serviceInfo.serviceInfo.graphQLField,
             foreignUserIds: [],
           };
-          acc[serviceKey] = {
+          acc[graphQLField] = {
             ...loggedInInfo,
             usedTestFlow: serviceInfo.usedTestFlow,
             foreignUserIds: [
@@ -1141,7 +1182,11 @@ export class NetlifyGraphAuth {
         return {result: 'failure', errors: result.errors};
       } else {
         const loggedIn = getIsLoggedIn(
-          {data: result.signoutServices},
+          {
+            data: foreignUserId
+              ? result.signoutServiceUser
+              : result.signoutServices,
+          },
           service,
           foreignUserId,
         );
