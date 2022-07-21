@@ -1108,9 +1108,7 @@ export class NetlifyGraphAuth {
         const loggedInServices =
           result?.data?.me?.serviceMetadata?.loggedInServices || [];
         return loggedInServices.reduce((acc, serviceInfo) => {
-          const graphQLField = fromServiceEnum(
-            serviceInfo.serviceInfo.graphQLField,
-          );
+          const graphQLField = serviceInfo.serviceInfo.graphQLField;
           const loggedInInfo = acc[graphQLField] || {
             graphQLField: serviceInfo.serviceInfo.graphQLField,
             foreignUserIds: [],
