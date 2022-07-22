@@ -1,4 +1,16 @@
-export function findMissingAuthServices(results: any) {
+type error = {
+  extensions?: {
+    type: string;
+    graphQLField?: string;
+  }
+}
+
+type results = {
+  errors?: error[];
+  graphQLErrors?: error[];
+};
+
+export function findMissingAuthServices(results: results): string[] {
   /* Detect and normalize between:
     1. The full graphql result
     2. The `result.errors` of a graphql result
@@ -23,7 +35,7 @@ export function findMissingAuthServices(results: any) {
   );
 
   const missingServices = missingServiceErrors
-    .map((error) => error.extensions.graphQLField)
+    .map((error) => error?.extensions?.graphQLField!)
     .filter(Boolean);
 
   return missingServices;

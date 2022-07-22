@@ -1202,7 +1202,7 @@ export class NetlifyGraphAuth {
     this._accessToken = null;
   };
 
-  findMissingAuthServices: any = findMissingAuthServices;
+  findMissingAuthServices = findMissingAuthServices;
 }
 
 export default NetlifyGraphAuth;
