@@ -11,7 +11,8 @@
     "build": "tsc",
     "clean": "mkdir -p dist && rm -r dist",
     "prepare": "npm run build",
-    "prettier": "prettier --write \"src/**/*.ts\""
+    "prettier": "prettier --write \"src/**/*.ts\"",
+    "release": "yarn build && npm publish"
   },
   "keywords": [],
   "author": "Netlify Inc.",
