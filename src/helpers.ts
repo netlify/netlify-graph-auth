@@ -23,7 +23,7 @@ export function findMissingAuthServices(results: any) {
   );
 
   const missingServices = missingServiceErrors
-    .map((error) => error.extensions.service)
+    .map((error) => error.extensions.graphQLField)
     .filter(Boolean);
 
   return missingServices;
