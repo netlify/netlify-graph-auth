@@ -40,7 +40,7 @@ export function findMissingAuthServices(
 
     if (isObject && error.hasOwnProperty('extensions')) {
       // @ts-expect-error
-      error.extensions && error.extensions?.type === 'auth/missing-auth';
+      return error.extensions && error.extensions?.type === 'auth/missing-auth';
     }
 
     return false;
