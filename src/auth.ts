@@ -428,8 +428,8 @@ const logoutMutation = `mutation SignOutServicesMutation(
   $services: [OneGraphServiceEnum!]
 ) {
   signoutServices(data: {
-    $services: $services
-    $servicesGraphQLFields: $servicesGraphQLFields
+    services: $services
+    servicesGraphQLFields: $servicesGraphQLFields
    }) {
     me {
       serviceMetadata {
